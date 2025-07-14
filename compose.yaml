@@ -19,7 +19,7 @@ services:
     container_name: api
     ports:
       - 8080
-  
+
   api2:
     <<: *default
     image: shuheikawamura243/gin-api:1.0.0
@@ -78,6 +78,7 @@ services:
       - 8445:8445
       - 8003:8003
       - 8004:8004
+      - 8007:8007 # Status API
     environment:
       <<: *kong-env
       KONG_PROXY_ACCESS_LOG: /dev/stdout
@@ -91,6 +92,16 @@ services:
       # Enable tracing
       KONG_TRACING_INSTRUMENTATIONS: all
       KONG_TRACING_SAMPLING_RATE: 1.0
+      # Enable Status API for Data Plane
+      KONG_STATUS_LISTEN: 0.0.0.0:8007
+
+  # --- Redis ---
+  redis:
+    <<: *default
+    image: redis:8.0.2
+    container_name: redis
+    ports:
+      - 6379:6379
 
   # --- Tempo ---
   tempo-init:
