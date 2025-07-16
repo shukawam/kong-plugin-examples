@@ -15,15 +15,8 @@ services:
   # --- Sample API ---
   api:
     <<: *default
-    image: shuheikawamura243/gin-api:1.0.0
+    image: shuheikawamura243/gin-api:9fa3e39dedb6b1c395315ca8027e91a3224979ba
     container_name: api
-    ports:
-      - 8080
-
-  api2:
-    <<: *default
-    image: shuheikawamura243/gin-api:1.0.0
-    container_name: api2
     ports:
       - 8080
 
@@ -56,7 +49,7 @@ services:
       retries: 3
   migrations:
     <<: *default
-    image: &kong-gateway-image kong/kong-gateway:3.10.0.1
+    image: &kong-gateway-image kong/kong-gateway:3.11.0.0
     container_name: migrations
     depends_on:
       - database
