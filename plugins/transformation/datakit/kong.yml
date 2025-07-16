@@ -1,0 +1,134 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: gin-service
+    host: api
+    port: 8080
+    protocol: http
+    routes:
+      - name: gin-route
+        paths:
+          - /v1
+        strip_path: true
+  - name: httpbin-service
+    url: https://httpbin.org
+    routes:
+      - name: httpbin-route
+        paths:
+          - /mock
+        strip_path: true
+  - name: httpbin-service2
+    url: https://httpbin.org
+    routes:
+      - name: httpbin-route2
+        paths:
+          - /mock2
+        strip_path: true
+plugins:
+  - name: datakit
+    config:
+      debug: true
+      nodes:
+        #####
+        # e.g. 1: static + exit node
+        # 超簡易的なモックサーバーを作成する例。本来であれば、Mockingプラグインを用いる方が良いはず。
+        #####
+        # - name: API_MOCK
+        #   type: static
+        #   values:
+        #     headers:
+        #       X-Foo: "123"
+        #       X-Multi:
+        #         - first
+        #         - second
+        #     body:
+        #       data: "hoge"
+        # - name: EXIT
+        #   type: exit
+        #   input: API_MOCK
+        #####
+        # e.g. 2: static + jq node
+        # シンプルに固定値をヘッダーに埋め込む例
+        #####
+        # - name: VALUE
+        #   type: static
+        #   values:
+        #     default: "my default value"
+        # - name: ADD_HEADERS
+        #   type: jq
+        #   inputs:
+        #     headers: request.headers
+        #     default: VALUE.default
+        #   output: service_request.headers
+        #   jq: |
+        #     {
+        #       "X-Extra": .default
+        #     }
+        #####
+        # e.g. 3: call + jq + exit node
+        # 複数のAPIを実行し、その結果をJOINする例。応用すれば、BFF(Backend for Frontend)としても活用できる。
+        #####
+        # - name: CAT_FACT
+        #   type: call
+        #   url: https://catfact.ninja/fact
+        # - name: DOG_FACT
+        #   type: call
+        #   url: https://dogapi.dog/api/v1/facts
+        # - name: JOIN
+        #   type: jq
+        #   inputs:
+        #     cat: CAT_FACT.body
+        #     dog: DOG_FACT.body
+        #   jq: |
+        #     {
+        #       cat_fact: .cat.fact,
+        #       dog_fact: .dog.facts[0],
+        #     }
+        # - name: EXIT
+        #   type: exit
+        #   inputs:
+        #     body: JOIN
+        #   status: 200
+        #####
+        # e.g. 4: property + jq node
+        # ここでは、プロキシ対象のサービスIDをヘッダーに埋め込んでみる
+        #####
+        # - name: SERVICE_ID
+        #   type: property
+        #   property: kong.service_id
+        # - name: SET_SERVICE_ID_HEADER
+        #   type: jq
+        #   inputs:
+        #     headers: request.headers
+        #     service_id: SERVICE_ID
+        #   output: service_request.headers
+        #   jq: |
+        #     {
+        #       "X-Service-Id": .service_id
+        #     }
+  - name: opentelemetry
+    config:
+      traces_endpoint: http://otel-collector:4318/v1/traces
+      logs_endpoint: http://otel-collector:4318/v1/logs
+      resource_attributes:
+        service.name: kong-otel-plugin
+  - name: http-log
+    config:
+      http_endpoint: http://fluent-bit:2020
+      custom_fields_by_lua:
+        traceid: |
+          local h = kong.request.get_header('traceparent')
+          return h:match("%-([a-f0-9]+)%-[a-f0-9]+%-")
+        spanid: |
+          local h = kong.request.get_header('traceparent')
+          return h:match("%-[a-f0-9]+%-([a-f0-9]+)%-")
+  - name: prometheus
+    config:
+      per_consumer: true
+      status_code_metrics: true
+      ai_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true
+      wasm_metrics: true
